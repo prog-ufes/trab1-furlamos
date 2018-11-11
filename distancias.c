@@ -4,6 +4,11 @@
 
 #define N 40
 
+
+
+
+
+
 // IMPLEMENTACAO DO CALCULO DAS DISTANCIAS
 
 // DISTANCIA EUCLIDIANA
@@ -39,48 +44,99 @@ float distCheb (float *p, float *q, int n) {
 	return dist;
 }
 
-// LEITURA DO ARQUIVO config.txt
-int leituraConfig (char *treino, char *teste, char *saida) {
-	FILE *config;
-	config = fopen ("config.txt", "r");
-	if(config == NULL) {
-      perror ("Error opening file");
-      fclose (config); //tem que dar free nos ponteiros
-      return(1);
-   	}
-  else {
-		fgets (treino, N, config);
-		fgets (teste, N, config);
-		fgets (saida, N, config);
 
-		if ((*treino == '\n') || (*teste == '\n') || (*saida == '\n')) {
-			fclose (config);
-			return(1);
-		}
-  }
 
-	
 
-  fclose (config);
 
-	return 0;
+
+// LEITURA DO treino/teste
+int leitura (char *path, float **rotulos) {
+	int f, colunas, l;
+    char linha;
+    float *features;
+	FILE *treiste;
+
+	  	treiste = fopen ("iris_teste.csv", "r");
+
+		if (treiste == NULL) {
+	    printf ("Erro ao abrir o arquivo!\n");
+	    fclose (treiste);
+	    return (1);
+    }
+
+  	else {
+  	  	features = (float*) malloc (sizeof (float));
+      	for (f = 0; ! feof (treiste); f++) {
+      		features = realloc (features, (f + 1) * sizeof (float));
+			fscanf (treiste, "%f%c", (features + f), &linha);
+        	if (linha == '\n') {
+        		l ++;
+        	}
+      	}
+      	colunas = (f - 1) / (l - 1); // CASO ENCNTRE O ERRO NO FEOF, TEM QUE FICAR F-1 AQUI
+      	features = realloc (features, f * sizeof (float)); // tambme tirar uisso
+  	}
+  	free (features);
+    return 0;
 }
 
-int main () {
-	int Rconfig;
-	char *treino, *teste, *saida;
-	treino = (char*) malloc (N * sizeof (char));
-	teste = (char*) malloc (N * sizeof (char));
-	saida = (char*) malloc (N * sizeof (char));
 
-	Rconfig = leituraConfig (treino, teste, saida);
-	if(Rconfig) {
-		perror ("Error opening");
-		return 0;
+
+
+
+
+
+
+
+
+
+
+
+// LEITURA DO ARQUIVO config.txt
+int main () {
+	int k;
+	float **rotulos,
+		  r;
+	char *pathTreino, *pathTeste, *pathSaida,
+		 tipo;
+	FILE *config;
+	
+	config = fopen ("config.txt", "r");
+
+	if(config == NULL) {
+    	printf ("Erro ao abrir o arquivo!\n");
+      	fclose (config);
+      	exit(1);
+   	}
+
+  	else {
+  		pathTreino = (char*) malloc (N * sizeof (char));
+		pathTeste = (char*) malloc (N * sizeof (char));
+		pathSaida = (char*) malloc (N * sizeof (char));
+
+		fgets (pathTreino, N, config);
+		fgets (pathTeste, N, config);
+		fgets (pathSaida, N, config);
+
+		if ((*pathTreino == '\n') || (*pathTeste == '\n') || (*pathSaida == '\n')) {
+			printf ("Arquivo incorreto!\n");
+			fclose (config);
+			exit(1);
+		}
 	}
-	puts(treino);
-	puts(teste);
-	puts(saida);
+	int l = leitura (pathTreino, rotulos);
+
+	while (! feof (config)) { //ESTA FAZENDO O FINAL DUAS VEZES
+		fscanf (config, "%d, %c", &k, &tipo);
+		if (tipo == 'M') {
+			fscanf (config, ", %f", &r);
+		}
+
+
+		//FAZER A MATRIZ DE CONFUSÃO PARA OS TESTES
+
+
+	}
 
 	return 0;
 }

@@ -46,17 +46,30 @@ float distCheb (float *p, float *q, int n) {
 
 
 
-
+float *tiposRotulos (float *base, int b, int qntCol, int *qntRot) {
+	float *tipos;
+	tipos = (float*) malloc (sizeof (float));
+	for (int i = (qntCol - 1); i < b; i += qntCol) {
+		printf("%d\n", qntRot[0]);
+		if (base[i] != tipos[*qntRot]) {
+			tipos = realloc (tipos, (*qntRot + 1) * sizeof (float));
+			tipos[i] = base[i];
+			*qntRot ++;
+		}
+	}
+	return tipos;
+}
 
 
 // LEITURA DO treino/teste
-int leitura (char *path, float **rotulos) {
-	int f, colunas, l;
+int leitura (char *path) {
+	int b, qntCol, qntL,
+		*qntRot;
     char linha;
-    float *features;
+    float *base, *rotulos;
 	FILE *treiste;
 
-	  	treiste = fopen ("iris_teste.csv", "r");
+	  	treiste = fopen ("iris_treino.csv", "r");
 
 		if (treiste == NULL) {
 	    printf ("Erro ao abrir o arquivo!\n");
@@ -65,24 +78,31 @@ int leitura (char *path, float **rotulos) {
     }
 
   	else {
-  	  	features = (float*) malloc (sizeof (float));
-      	for (f = 0; ! feof (treiste); f++) {
-      		features = realloc (features, (f + 1) * sizeof (float));
-			fscanf (treiste, "%f%c", (features + f), &linha);
+  	  	base = (float*) malloc (sizeof (float));
+		qntL = 0;
+      	for (b = 0; ! feof (treiste); b++) {
+      		base = realloc (base, (b + 1) * sizeof (float));
+			fscanf (treiste, "%f%c", &base[b], &linha);
         	if (linha == '\n') {
-        		l ++;
+        		qntL ++;
         	}
       	}
-      	colunas = (f - 1) / (l - 1); // CASO ENCNTRE O ERRO NO FEOF, TEM QUE FICAR F-1 AQUI
-      	features = realloc (features, f * sizeof (float)); // tambme tirar uisso
+      	qntCol = (b - 1) / (qntL - 1);
+      	base = realloc (base, b * sizeof (float));
   	}
-  	free (features);
+
+	qntRot = (int*) malloc (sizeof (int));
+	*qntRot = 0;
+	rotulos = tiposRotulos (base, (b - 1), qntCol, qntRot);
+
+	printf("%d\n", *qntRot);
+	for (size_t i = 0; i < *qntRot; i++) {
+		printf("%f\n", rotulos[i]);
+	}
+
+  	free (base);
     return 0;
 }
-
-
-
-
 
 
 
@@ -100,7 +120,7 @@ int main () {
 	char *pathTreino, *pathTeste, *pathSaida,
 		 tipo;
 	FILE *config;
-	
+
 	config = fopen ("config.txt", "r");
 
 	if(config == NULL) {
@@ -124,13 +144,10 @@ int main () {
 			exit(1);
 		}
 	}
-	int l = leitura (pathTreino, rotulos);
+	int l = leitura (pathTreino);
 
 	while (! feof (config)) { //ESTA FAZENDO O FINAL DUAS VEZES
-		fscanf (config, "%d, %c", &k, &tipo);
-		if (tipo == 'M') {
-			fscanf (config, ", %f", &r);
-		}
+		fscanf (config, "%d, %c, %f", &k, &tipo, &r);
 
 
 		//FAZER A MATRIZ DE CONFUSÃO PARA OS TESTES

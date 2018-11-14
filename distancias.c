@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define N 40
+#define N 260
 
 
 
@@ -44,30 +44,23 @@ float distCheb (float *p, float *q, int n) {
 	return dist;
 }
 
-
-/*
-float *tiposRotulos (float *base, int b, int qntCol, int *qntRot) {
-	float *tipos;
-	tipos = (float*) malloc (sizeof (float));
-	for (int i = (qntCol - 1); i < b; i += qntCol) {
-		printf("%d\n", qntRot[0]);
-		if (base[i] != tipos[*qntRot]) {
-			tipos = realloc (tipos, (*qntRot + 1) * sizeof (float));
-			tipos[i] = base[i];
-			*qntRot ++;
+int busca (float *vet, int n, float k) {
+	for (int i = 0; i < n; i ++) {
+		if (vet[i] == k) {
+			return 0;
 		}
 	}
-	return tipos;
+	return 1;
 }
-*/
+
+
 
 // LEITURA DO treino/teste
-int leitura (char *path) {
-	int qntB, qntCol, qntL,
-		*qntRot;
+int leitura (char *path, int tipoLeitura) { //1 para treino, 2 para teste
+	int qntB = 0, qntCol = 0, qntL = 0, qntRot = 0;
     char linha;
     float **matBase,
-		  *base, *rotulos;
+		  *rotulos, *base;
 	FILE *treiste;
 
 	treiste = fopen ("iris_treino.csv", "r");
@@ -79,52 +72,67 @@ int leitura (char *path) {
     }
 
   	base = (float*) malloc (sizeof (float));
-	qntL = 0;
     for (qntB = 0; ! feof (treiste); qntB++) {
     	base = realloc (base, (qntB + 1) * sizeof (float));
 		fscanf (treiste, "%f%c", &base[qntB], &linha);
-        if (linha == '\n') {
-        	qntL ++;
-        }
+        if (linha == '\n') qntL ++;
     }
+	fclose (treiste);
+
 	qntL --;
     qntCol = (qntB - 1) / qntL;
 	matBase = (float**) malloc (qntL * (sizeof (float*)));
 	*matBase = (float*) malloc (qntCol * (sizeof (float)));
 
-	for (int k = 0, i = 0, j = 0; k < (qntB - 1); k ++, i ++) {
-		if ((i % qntCol == 0) && (i != 0)) {
-			j ++;
-			i = 0;
-			matBase[j] = (float*) malloc (qntCol * (sizeof (float)));
-		}
-		//matBase[i][j] = base[k];
-	}
-/*
-	for (size_t i = 0; i < qntL; i++) {
-		for (size_t j = 0; j < qntCol; j++) {
-			printf(" %.2f", matBase[i][j]);
-		}
-		printf("\n");
-	}
-*/
-	qntRot = (int*) malloc (sizeof (int));
-	*qntRot = 0;
-	/*rotulos = tiposRotulos (base, (b - 1), qntCol, qntRot);
+	for (int k = 0, i = 0, j = 0; k < (qntB - 1); k ++, j ++) {
+		if ((j % qntCol == 0) && (j != 0)) {
+			i ++;
+			j = 0;
+			matBase[i] = (float*) malloc (qntCol * (sizeof (float)));
+			matBase[i][j] = base[k];
 
-	printf("%d\n", *qntRot);
-	for (size_t i = 0; i < *qntRot; i++) {
-		printf("%f\n", rotulos[i]);
-	}*/
-
+			if (tipoLeitura == 1) {
+				if (qntRot == 0) {
+					rotulos = (float*) malloc (sizeof (float));
+					rotulos[0] = base[k - 1];
+					qntRot = 1;
+				}
+				if (busca (rotulos, qntRot, base[k - 1])) {
+					qntRot ++;
+					rotulos = realloc (rotulos, qntRot * sizeof (float));
+					rotulos[qntRot - 1] = base[k - 1];
+				}
+				// começa a matriz de confusão
+			}
+		}
+	}
   	free (base);
+
+	// aqui vai a matriz de confusão e o teste
+
+	for (int i = 0; i < qntL; i ++) {
+		free (matBase[i]);
+	}
+	free (matBase);
+	free (rotulos);
     return 0;
 }
 
 
+int **matConfusa (float **matBase, int qntCol, int qntL, float *rotulos, int qntRot, int inicial) { //lembrar de enviar qntCol - 1, pra tirar o rotulo
+	int **confusa;
+	confusa = (int**) malloc (qntRot * sizeof (int*));
+	for (int i = 0; i < qntRot; i++) {
+		confusa[i] = (int*) malloc (qntRot * sizeof (int));
+	}
 
-
-
+	for (int i = 0; i < qntL; i++) {
+		for (int j = 0; j < qntCol; j++) {
+			/* code */
+		}
+	}
+	return confusa;
+}
 
 
 
@@ -132,8 +140,7 @@ int leitura (char *path) {
 // LEITURA DO ARQUIVO config.txt
 int main () {
 	int k;
-	float **rotulos,
-		  r;
+	float r;
 	char *pathTreino, *pathTeste, *pathSaida,
 		 tipo;
 	FILE *config;
@@ -158,19 +165,29 @@ int main () {
 		if ((*pathTreino == '\n') || (*pathTeste == '\n') || (*pathSaida == '\n')) {
 			printf ("Arquivo incorreto!\n");
 			fclose (config);
+			free (pathTreino);
+			free (pathTeste);
+			free (pathSaida);
 			exit(1);
 		}
+
+		while (! feof (config)) { //ESTA FAZENDO O FINAL DUAS VEZES
+			fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+
+			if (leitura (pathTreino, 1)) {
+				printf ("Arquivo incorreto!\n");
+				fclose (config);
+				free (pathTreino);
+				free (pathTeste);
+				free (pathSaida);
+				exit(1);
+			}
+			//FAZER A MATRIZ DE CONFUSÃO PARA OS TESTES
+		}
 	}
-	int l = leitura (pathTreino);
-
-	while (! feof (config)) { //ESTA FAZENDO O FINAL DUAS VEZES
-		fscanf (config, "%d, %c, %f", &k, &tipo, &r);
-
-
-		//FAZER A MATRIZ DE CONFUSÃO PARA OS TESTES
-
-
-	}
-
+	fclose (config);
+	free (pathTreino);
+	free (pathTeste);
+	free (pathSaida);
 	return 0;
 }

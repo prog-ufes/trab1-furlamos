@@ -45,7 +45,7 @@ float distCheb (float *p, float *q, int n) {
 }
 
 
-
+/*
 float *tiposRotulos (float *base, int b, int qntCol, int *qntRot) {
 	float *tipos;
 	tipos = (float*) malloc (sizeof (float));
@@ -59,46 +59,63 @@ float *tiposRotulos (float *base, int b, int qntCol, int *qntRot) {
 	}
 	return tipos;
 }
-
+*/
 
 // LEITURA DO treino/teste
 int leitura (char *path) {
-	int b, qntCol, qntL,
+	int qntB, qntCol, qntL,
 		*qntRot;
     char linha;
-    float *base, *rotulos;
+    float **matBase,
+		  *base, *rotulos;
 	FILE *treiste;
 
-	  	treiste = fopen ("iris_treino.csv", "r");
+	treiste = fopen ("iris_treino.csv", "r");
 
-		if (treiste == NULL) {
+	if (treiste == NULL) {
 	    printf ("Erro ao abrir o arquivo!\n");
 	    fclose (treiste);
 	    return (1);
     }
 
-  	else {
-  	  	base = (float*) malloc (sizeof (float));
-		qntL = 0;
-      	for (b = 0; ! feof (treiste); b++) {
-      		base = realloc (base, (b + 1) * sizeof (float));
-			fscanf (treiste, "%f%c", &base[b], &linha);
-        	if (linha == '\n') {
-        		qntL ++;
-        	}
-      	}
-      	qntCol = (b - 1) / (qntL - 1);
-      	base = realloc (base, b * sizeof (float));
-  	}
+  	base = (float*) malloc (sizeof (float));
+	qntL = 0;
+    for (qntB = 0; ! feof (treiste); qntB++) {
+    	base = realloc (base, (qntB + 1) * sizeof (float));
+		fscanf (treiste, "%f%c", &base[qntB], &linha);
+        if (linha == '\n') {
+        	qntL ++;
+        }
+    }
+	qntL --;
+    qntCol = (qntB - 1) / qntL;
+	matBase = (float**) malloc (qntL * (sizeof (float*)));
+	*matBase = (float*) malloc (qntCol * (sizeof (float)));
 
+	for (int k = 0, i = 0, j = 0; k < (qntB - 1); k ++, i ++) {
+		if ((i % qntCol == 0) && (i != 0)) {
+			j ++;
+			i = 0;
+			matBase[j] = (float*) malloc (qntCol * (sizeof (float)));
+		}
+		//matBase[i][j] = base[k];
+	}
+/*
+	for (size_t i = 0; i < qntL; i++) {
+		for (size_t j = 0; j < qntCol; j++) {
+			printf(" %.2f", matBase[i][j]);
+		}
+		printf("\n");
+	}
+*/
 	qntRot = (int*) malloc (sizeof (int));
 	*qntRot = 0;
-	rotulos = tiposRotulos (base, (b - 1), qntCol, qntRot);
+	/*rotulos = tiposRotulos (base, (b - 1), qntCol, qntRot);
 
 	printf("%d\n", *qntRot);
 	for (size_t i = 0; i < *qntRot; i++) {
 		printf("%f\n", rotulos[i]);
-	}
+	}*/
 
   	free (base);
     return 0;

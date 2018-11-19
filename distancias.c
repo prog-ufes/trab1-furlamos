@@ -4,16 +4,140 @@
 
 #define N 260
 
+int leitura (int k, char tipo, float r, char *path, float ***matBase, int *qntL, int *qntCol);
+float *rotulacao (float **matBase, int qntL, int qntCol, int *qntRot);
 float distancias (float *p, float *q, int n, float r, char tipo);
 int busca (float *vet, int n, float k);
 void bubbleSort (float *vet, int *pos, int n);
-int leitura (int k, char tipo, float r, char *path, int tipoLeitura);
-float classificador (int k, char tipo, float r, float *p, float **matBase, int qntCol, int qntL, float *rotulos, int qntRot, int tipoClass);
+int maior (int *vet, int n);
+float classificador (int k, char tipo, float r, float *p, float **matBase, int qntCol, int qntL, float *rotulos, int qntRot);
 void confusao (int **matConfusa, float rotClass, float rotReal, float *rotulos, int qntRot);
 float acuracia (int **matConfusa, int qntRot);
 
+int main () {
+	int **matConfusa,
+	    qntL = 0, qntLTeste = 0, qntCol = 0, qntRot = 0,
+		k, flagRot = 0, acc;
+	float ***matTreino, ***matTeste,
+		  *rotulos, *p,
+		  r, rotReal, rotClass;
+	char *pathTreino, *pathTeste, *pathSaida,
+		 tipo;
+	FILE *config;
 
-// IMPLEMENTACAO DO CALCULO DAS DISTANCIAS
+	config = fopen ("config.txt", "r");
+
+	if(config == NULL) {
+    	printf ("Erro ao abrir o arquivo!\n");
+      	fclose (config);
+      	exit(1);
+   	}
+
+  	else {
+  		pathTreino = (char*) malloc (N * sizeof (char));
+		pathTeste = (char*) malloc (N * sizeof (char));
+		pathSaida = (char*) malloc (N * sizeof (char));
+
+		fgets (pathTreino, N, config);
+		fgets (pathTeste, N, config);
+		fgets (pathSaida, N, config);
+
+		if ((*pathTreino == '\n') || (*pathTeste == '\n') || (*pathSaida == '\n')) {
+			printf ("Arquivo incorreto!\n");
+			exit(1);
+		}
+
+		for (int s = 1; ! feof (config); s++) { //ESTA FAZENDO O FINAL DUAS VEZES
+			fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+
+			matTreino = (float***) malloc (sizeof (float**));
+			if (! (leitura (k, tipo, r, pathTreino, matTreino, &qntL, &qntCol))) {
+				if (flagRot == 0) {
+					rotulos = rotulacao (*matTreino, qntL, qntCol, &qntRot);
+					flagRot = 1;
+				}
+
+				matConfusa = (int**) malloc (qntRot * sizeof (int*));
+				for (int i = 0; i < qntRot; i ++) matConfusa[i] = (int*) malloc (qntRot * sizeof (int));
+
+				for (int i = 0; i < qntL; i ++) {
+					p = matTreino[0][i];
+					rotReal = matTreino[0][i][qntCol - 1];
+					rotClass = classificador (k, tipo, r, p, *matTreino, qntCol, qntL, rotulos, qntRot);
+					confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
+				}
+
+				matTeste = (float***) malloc (sizeof (float**));
+				if (! (leitura (k, tipo, r, pathTeste, matTeste, &qntLTeste, &qntCol))) {
+					for (int i = 0; i < qntLTeste; i ++) {
+						p = matTeste[0][i];
+						rotReal = matTeste[0][i][qntCol - 1];
+						rotClass = classificador (k, tipo, r, p, *matTreino, qntCol, qntL, rotulos, qntRot);
+						confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
+					}
+				}
+			}
+			acc = acuracia (matConfusa, qntRot);
+			
+		}
+	}
+	fclose (config);
+	return 0;
+}
+
+int leitura (int k, char tipo, float r, char *path, float ***matBase, int *qntL, int *qntCol) {
+	int qntB = 0;
+    char linha;
+    float *base;
+	FILE *treiste;
+
+	treiste = fopen ("iris_treino.csv", "r");
+
+	if (treiste == NULL) {
+	    printf ("Erro ao abrir o arquivo!\n");
+	    fclose (treiste);
+	    return (1);
+    }
+  	base = (float*) malloc (sizeof (float));
+    for (qntB = 0; ! feof (treiste); qntB++) {
+    	base = realloc (base, (qntB + 1) * sizeof (float));
+		fscanf (treiste, "%f%c", &base[qntB], &linha);
+        if (linha == '\n') (*qntL) ++;
+    }
+	fclose (treiste);
+
+	(*qntL) --;
+    (*qntCol) = (qntB - 1) / (*qntL);
+	matBase[0] = (float**) malloc (*qntL * (sizeof (float*)));
+
+	for (int k = 0, i = -1, j = 0; k < (qntB - 1); k ++, j ++) {
+		if (j % *qntCol == 0) {
+			i ++;
+			j = 0;
+			matBase[0][i] = (float*) malloc (*qntCol * (sizeof (float)));
+		}
+		matBase[0][i][j] = base[k];
+	}
+  	free (base);
+  	return 0;
+}
+
+float *rotulacao (float **matBase, int qntL, int qntCol, int *qntRot) {
+	float *rotulos;
+	rotulos = (float*) malloc (sizeof (float));
+	rotulos[0] = matBase[0][qntCol - 1];
+	(*qntRot) = 1;
+
+	for (int i = 1; i < qntL; i ++) {
+		if (busca (rotulos, *qntRot, matBase[i][qntCol - 1])) {
+			(*qntRot) ++;
+			rotulos = realloc (rotulos, *qntRot * sizeof (float));
+			rotulos[(*qntRot) - 1] = matBase[i][qntCol - 1];
+		}
+	}
+	return rotulos;
+}
+
 float distancias (float *p, float *q, int n, float r, char tipo) {
 	float dist = 0, mod = 0;
 	switch (tipo) {
@@ -48,6 +172,55 @@ float distancias (float *p, float *q, int n, float r, char tipo) {
 	return dist;
 }
 
+float classificador (int k, char tipo, float r, float *p, float **matBase, int qntCol, int qntL, float *rotulos, int qntRot) {
+	int *pos, *contaRot,
+	    posClass;
+	float *q, *dist,
+		  rotuloClass;
+
+	pos = (int*) malloc (sizeof (int));
+	dist = (float*) malloc (sizeof (float));
+
+	for (int i = 0; i < qntL; i ++) {
+		q = matBase[i];
+		pos = realloc (pos, (i + 1) * sizeof (int));
+		pos[i] = i;
+		dist = realloc (dist, (i + 1) * sizeof (float));
+		dist[i] = distancias (p, q, (qntCol - 1), r, tipo);
+	}
+	bubbleSort (dist, pos, qntL);
+	contaRot = (int*) malloc (qntRot * sizeof (int));
+	for (int i = 0; i < qntRot; i ++) contaRot[i] = 0;
+	for (int i = 0; i < k; i ++) {
+		for (int j = 0; j < qntRot; j ++) {
+			if (matBase[pos[i]][qntCol - 1] == rotulos[j]) contaRot[j] ++;
+		}
+	}
+	posClass = maior (contaRot, qntRot);
+	rotuloClass = rotulos[posClass];
+	return rotuloClass;
+}
+
+void confusao (int **matConfusa, float rotClass, float rotReal, float *rotulos, int qntRot) {
+	int m, n;
+	for (int i = 0; i < qntRot; i ++) {
+		if (rotReal == rotulos[i]) m = i;
+		if (rotClass == rotulos[i]) n = i;
+	}
+	matConfusa[m][n] ++;
+}
+
+float acuracia (int **matConfusa, int qntRot) {
+	int acertos = 0, total = 0;
+	float acc;
+	for (int i = 0; i < qntRot; i ++) {
+		acertos += matConfusa[i][i];
+		for (int j = 0; j < qntRot; j ++) total += matConfusa[i][j];
+	}
+	acc = acertos / total;
+	return acc;
+}
+
 int busca (float *vet, int n, float k) {
 	for (int i = 0; i < n; i ++) {
 		if (vet[i] == k) {
@@ -79,173 +252,4 @@ int maior (int *vet, int n) {
 		}
 	}
 	return posMaior;
-}
-
-// LEITURA DO treino/teste
-int leitura (int k, char tipo, float r, char *path, int tipoLeitura) { //1 para treino, 2 para teste
-	int **matConfusa,
-	    qntB = 0, qntCol = 0, qntL = 0, qntRot = 0;
-    char linha;
-    float **matBase,
-		  *rotulos, *base,
-		  rotReal, rotClass;
-	FILE *treiste;
-
-	treiste = fopen ("iris_teste.csv", "r");
-
-	if (treiste == NULL) {
-	    printf ("Erro ao abrir o arquivo!\n");
-	    fclose (treiste);
-	    return (1);
-    }
-
-  	base = (float*) malloc (sizeof (float));
-    for (qntB = 0; ! feof (treiste); qntB++) {
-    	base = realloc (base, (qntB + 1) * sizeof (float));
-		fscanf (treiste, "%f%c", &base[qntB], &linha);
-        if (linha == '\n') qntL ++;
-    }
-	fclose (treiste);
-
-	qntL --;
-    qntCol = (qntB - 1) / qntL;
-	matBase = (float**) malloc (qntL * (sizeof (float*)));
-
-	for (int k = 0, i = -1, j = 0; k < (qntB - 1); k ++, j ++) {
-		if (j % qntCol == 0) {
-			i ++;
-			j = 0;
-			matBase[i] = (float*) malloc (qntCol * (sizeof (float)));
-
-			if ((tipoLeitura == 1) && (k != 0)) {
-				if (qntRot == 0) {
-					rotulos = (float*) malloc (sizeof (float));
-					rotulos[0] = base[k - 1];
-					qntRot = 1;
-				}
-				if (busca (rotulos, qntRot, base[k - 1])) {
-					qntRot ++;
-					rotulos = realloc (rotulos, qntRot * sizeof (float));
-					rotulos[qntRot - 1] = base[k - 1];
-				}
-			}
-		}
-
-		matBase[i][j] = base[k];
-	}
-  	free (base);
-
-	matConfusa = (int**) malloc (qntRot * (sizeof (int*)));
-	for (int i = 0; i < qntRot; i ++) {
-		matConfusa[i] = (int*) malloc (qntRot * (sizeof (int)));
-		for (int j = 0; j < qntRot; j ++) matConfusa[i][j] = 0;
-	}
-
-	for (int i = 0; i < qntL; i ++) {
-		rotReal = matBase[i][qntCol - 1];
-		rotClass = classificador (k, tipo, r, matBase[i], matBase, qntCol, qntL, rotulos, qntRot, 1);
-		confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
-	}
-
-	for (int i = 0; i < qntL; i ++) free (matBase[i]);
-	free (matBase);
-	for (int i = 0; i < qntRot; i ++) free (matConfusa[i]);
-	free (matConfusa);
-	free (rotulos);
-    return 0;
-}
-
-
-
-float classificador (int k, char tipo, float r, float *p, float **matBase, int qntCol, int qntL, float *rotulos, int qntRot, int tipoClass) { //1 para treino, 2 tste
-	int *pos, *contaRot,
-	    posClass;
-	float *q, *dist,
-		  rotuloClass;
-
-	pos = (int*) malloc (sizeof (int));
-	dist = (float*) malloc (sizeof (float));
-
-	for (int i = 0; i < qntL; i ++) {
-		q = matBase[i];
-		pos = realloc (pos, (i + 1) * sizeof (int));
-		pos[i] = i;
-		dist = realloc (dist, (i + 1) * sizeof (float));
-		dist[i] = distancias (p, q, (qntCol - 1), r, tipo);
-	}
-	bubbleSort (dist, pos, qntL);
-	contaRot = (int*) malloc (qntRot * sizeof (int));
-	for (int i = 0; i < qntRot; i ++) contaRot[i] = 0;
-	if (tipoClass) k ++;
-	for (int i = 0; i < k; i ++) {
-		if (tipoClass) i ++;
-		for (int j = 0; j < qntRot; j ++) {
-			if (matBase[pos[i]][qntCol - 1] == rotulos[j]) contaRot[j] ++;
-		}
-	}
-	posClass = maior (contaRot, qntRot);
-	rotuloClass = rotulos[posClass];
-	return rotuloClass;
-}
-
-float acuracia (int **matConfusa, int qntRot) {
-	int acertos = 0, total = 0;
-	float acc;
-	for (int i = 0; i < qntRot; i ++) {
-		acertos += matConfusa[i][i];
-		for (int j = 0; j < qntRot; j ++) total += matConfusa[i][j];
-	}
-	acc = acertos / total;
-	return acc;
-}
-
-void confusao (int **matConfusa, float rotClass, float rotReal, float *rotulos, int qntRot) {
-	int m, n;
-	for (int i = 0; i < qntRot; i ++) {
-		if (rotReal == rotulos[i]) m = i;
-		if (rotClass == rotulos[i]) n = i;
-	}
-	matConfusa[m][n] ++;
-}
-
-// LEITURA DO ARQUIVO config.txt
-int main () {
-	int k;
-	float r;
-	char *pathTreino, *pathTeste, *pathSaida,
-		 tipo;
-	FILE *config;
-
-	config = fopen ("config.txt", "r");
-
-	if(config == NULL) {
-    	printf ("Erro ao abrir o arquivo!\n");
-      	fclose (config);
-      	exit(1);
-   	}
-
-  	else {
-  		pathTreino = (char*) malloc (N * sizeof (char));
-		pathTeste = (char*) malloc (N * sizeof (char));
-		pathSaida = (char*) malloc (N * sizeof (char));
-
-		fgets (pathTreino, N, config);
-		fgets (pathTeste, N, config);
-		fgets (pathSaida, N, config);
-
-		if ((*pathTreino == '\n') || (*pathTeste == '\n') || (*pathSaida == '\n')) {
-			printf ("Arquivo incorreto!\n");
-			exit(1);
-		}
-
-		while (! feof (config)) { //ESTA FAZENDO O FINAL DUAS VEZES
-			fscanf (config, "%d, %c, %f", &k, &tipo, &r);
-
-			if (leitura (k, tipo, r, pathTreino, 1)) {
-
-			}
-		}
-	}
-	fclose (config);
-	return 0;
 }

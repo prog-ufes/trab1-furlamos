@@ -4,8 +4,7 @@
 
 #define N 260
 
-int leitura (int k, char tipo, float r, char *path, float ***matBase, int *qntL, int *qntCol);
-float *rotulacao (float **matBase, int qntL, int qntCol, int *qntRot);
+int leitura (char *path, float ***matBase, int *qntL, int *qntCol, float **rotulos, int *qntRot);
 float distancias (float *p, float *q, int n, float r, char tipo);
 int busca (float *vet, int n, float k);
 void bubbleSort (float *vet, int *pos, int n);
@@ -16,10 +15,11 @@ float acuracia (int **matConfusa, int qntRot);
 
 int main () {
 	int **matConfusa,
-	    qntL = 0, qntLTeste = 0, qntCol = 0, qntRot = 0,
+	    qntL, qntLTeste, qntCol, qntRot, qntRotTeste,
 		k, flagRot = 0, acc;
 	float ***matTreino, ***matTeste,
-		  *rotulos, *p,
+		  **rotulos,
+		  *p,
 		  r, rotReal, rotClass;
 	char *pathTreino, *pathTeste, *pathSaida,
 		 tipo;
@@ -47,45 +47,42 @@ int main () {
 			exit(1);
 		}
 
-		for (int s = 1; ! feof (config); s++) { //ESTA FAZENDO O FINAL DUAS VEZES
-			fscanf (config, "%d, %c, %f", &k, &tipo, &r);
 
-			matTreino = (float***) malloc (sizeof (float**));
-			if (! (leitura (k, tipo, r, pathTreino, matTreino, &qntL, &qntCol))) {
-				if (flagRot == 0) {
-					rotulos = rotulacao (*matTreino, qntL, qntCol, &qntRot);
-					flagRot = 1;
-				}
+		matTreino = (float***) malloc (sizeof (float**));
+		matTeste = (float***) malloc (sizeof (float**));
+		rotulos = (float**) malloc (sizeof (float*));
+		
+		if (! (leitura (pathTreino, matTreino, &qntL, &qntCol, rotulos, &qntRot))) {
+			if (! (leitura (pathTeste, matTeste, &qntLTeste, &qntCol, rotulos, &qntRotTeste))) {
 
-				matConfusa = (int**) malloc (qntRot * sizeof (int*));
-				for (int i = 0; i < qntRot; i ++) matConfusa[i] = (int*) malloc (qntRot * sizeof (int));
+				if (qntRotTeste != qntRot) printf("Rotulo desconhecido presente no teste!\n");
+				matConfusa = (int**) malloc (qntRotTeste * sizeof (int*));
+				for (int i = 0; i < qntRot; i ++) matConfusa[i] = (int*) malloc (qntRotTeste * sizeof (int));
 
-				for (int i = 0; i < qntL; i ++) {
-					p = matTreino[0][i];
-					rotReal = matTreino[0][i][qntCol - 1];
-					rotClass = classificador (k, tipo, r, p, *matTreino, qntCol, qntL, rotulos, qntRot);
-					confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
-				}
+				for (int s = 1; ! feof (config); s++) { //ESTA FAZENDO O FINAL DUAS VEZES
+					fscanf (config, "%d, %c, %f", &k, &tipo, &r);
 
-				matTeste = (float***) malloc (sizeof (float**));
-				if (! (leitura (k, tipo, r, pathTeste, matTeste, &qntLTeste, &qntCol))) {
+					for (int i = 0; i < qntRot; i ++) {
+						for (int j = 0; j < qntRot; j ++) matConfusa[i][j] = 0;
+					}
+
 					for (int i = 0; i < qntLTeste; i ++) {
 						p = matTeste[0][i];
 						rotReal = matTeste[0][i][qntCol - 1];
-						rotClass = classificador (k, tipo, r, p, *matTreino, qntCol, qntL, rotulos, qntRot);
-						confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
+						rotClass = classificador (k, tipo, r, p, matTeste[0], qntCol, qntL, rotulos[0], qntRotTeste);
+						confusao (matConfusa, rotClass, rotReal, rotulos[0], qntRotTeste);
+
+						//escrever no arquivo aqui
 					}
 				}
 			}
-			acc = acuracia (matConfusa, qntRot);
-			
 		}
+		fclose (config);
+		return 0;
 	}
-	fclose (config);
-	return 0;
 }
 
-int leitura (int k, char tipo, float r, char *path, float ***matBase, int *qntL, int *qntCol) {
+int leitura (char *path, float ***matBase, int *qntL, int *qntCol, float **rotulos, int *qntRot) {
 	int qntB = 0;
     char linha;
     float *base;
@@ -98,6 +95,9 @@ int leitura (int k, char tipo, float r, char *path, float ***matBase, int *qntL,
 	    fclose (treiste);
 	    return (1);
     }
+	(*qntL) = 0;
+	(*qntCol) = 0;
+	(*qntRot) = 0;
   	base = (float*) malloc (sizeof (float));
     for (qntB = 0; ! feof (treiste); qntB++) {
     	base = realloc (base, (qntB + 1) * sizeof (float));
@@ -108,34 +108,26 @@ int leitura (int k, char tipo, float r, char *path, float ***matBase, int *qntL,
 
 	(*qntL) --;
     (*qntCol) = (qntB - 1) / (*qntL);
-	matBase[0] = (float**) malloc (*qntL * (sizeof (float*)));
+	matBase[0] = (float**) malloc ((*qntL) * (sizeof (float*)));
+	//rotulos[0] = (float**) malloc ((*qntL) * (sizeof (float*)));
 
 	for (int k = 0, i = -1, j = 0; k < (qntB - 1); k ++, j ++) {
-		if (j % *qntCol == 0) {
+		if (j % (*qntCol) == 0) {
 			i ++;
 			j = 0;
-			matBase[0][i] = (float*) malloc (*qntCol * (sizeof (float)));
+			matBase[0][i] = (float*) malloc ((*qntCol) * (sizeof (float)));
+
+			if ((busca (rotulos[0], (*qntRot), base[k - 1])) && (k != 0)) {
+				(*qntRot) ++;
+				printf("%d\n", (*qntRot));
+				rotulos[0] = realloc (rotulos[0], (*qntRot) * sizeof (float)); //isso aqui valgrind não gostou
+				rotulos[0][(*qntRot) - 1] = base[k - 1];
+			}
 		}
 		matBase[0][i][j] = base[k];
 	}
   	free (base);
   	return 0;
-}
-
-float *rotulacao (float **matBase, int qntL, int qntCol, int *qntRot) {
-	float *rotulos;
-	rotulos = (float*) malloc (sizeof (float));
-	rotulos[0] = matBase[0][qntCol - 1];
-	(*qntRot) = 1;
-
-	for (int i = 1; i < qntL; i ++) {
-		if (busca (rotulos, *qntRot, matBase[i][qntCol - 1])) {
-			(*qntRot) ++;
-			rotulos = realloc (rotulos, *qntRot * sizeof (float));
-			rotulos[(*qntRot) - 1] = matBase[i][qntCol - 1];
-		}
-	}
-	return rotulos;
 }
 
 float distancias (float *p, float *q, int n, float r, char tipo) {

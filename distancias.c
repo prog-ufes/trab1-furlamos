@@ -15,12 +15,12 @@ float acuracia (int **matConfusa, int qntRot);
 
 int main () {
 	int **matConfusa,
-	    qntL, qntLTeste, qntCol, qntRot, qntRotTeste,
-		k, flagRot = 0, acc;
-	float ***matTreino, ***matTeste,
-		  **rotulos,
+	    qntL, qntLTeste, qntCol, qntRot = 0, qntRotTeste,
+		k;
+	float **matTreino, **matTeste,
+		  *rotulos,
 		  *p,
-		  r, rotReal, rotClass;
+		  r, rotReal, rotClass, acc;
 	char *pathTreino, *pathTeste, *pathSaida,
 		 tipo;
 	FILE *config;
@@ -47,17 +47,14 @@ int main () {
 			exit(1);
 		}
 
-
-		matTreino = (float***) malloc (sizeof (float**));
-		matTeste = (float***) malloc (sizeof (float**));
-		rotulos = (float**) malloc (sizeof (float*));
 		
-		if (! (leitura (pathTreino, matTreino, &qntL, &qntCol, rotulos, &qntRot))) {
-			if (! (leitura (pathTeste, matTeste, &qntLTeste, &qntCol, rotulos, &qntRotTeste))) {
-
+		if (! (leitura (pathTreino, &matTreino, &qntL, &qntCol, &rotulos, &qntRot))) {
+			qntRotTeste = qntRot;
+			if (! (leitura (pathTeste, &matTeste, &qntLTeste, &qntCol, &rotulos, &qntRotTeste))) {
+				qntRot = qntRotTeste;
 				if (qntRotTeste != qntRot) printf("Rotulo desconhecido presente no teste!\n");
-				matConfusa = (int**) malloc (qntRotTeste * sizeof (int*));
-				for (int i = 0; i < qntRot; i ++) matConfusa[i] = (int*) malloc (qntRotTeste * sizeof (int));
+				matConfusa = (int**) malloc (qntRot * sizeof (int*));
+				for (int i = 0; i < qntRot; i ++) matConfusa[i] = (int*) malloc (qntRot * sizeof (int));
 
 				for (int s = 1; ! feof (config); s++) { //ESTA FAZENDO O FINAL DUAS VEZES
 					fscanf (config, "%d, %c, %f", &k, &tipo, &r);
@@ -67,16 +64,46 @@ int main () {
 					}
 
 					for (int i = 0; i < qntLTeste; i ++) {
-						p = matTeste[0][i];
-						rotReal = matTeste[0][i][qntCol - 1];
-						rotClass = classificador (k, tipo, r, p, matTeste[0], qntCol, qntL, rotulos[0], qntRotTeste);
-						confusao (matConfusa, rotClass, rotReal, rotulos[0], qntRotTeste);
+						p = matTeste[i];
+						rotReal = matTeste[i][qntCol - 1];
+						rotClass = classificador (k, tipo, r, p, matTeste, qntCol, qntL, rotulos, qntRot);
+						confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
+						/*
+						for (int i = 0; i < qntRot; ++i)
+						{
+							for (int j = 0; j < qntRot; ++j)
+							{
+								printf("%d ", matConfusa[i][j]);
+							}
+							printf("\n");
+						}
+						*/
+						acc = acuracia (matConfusa, qntRot);
+						printf("%d\n", s);
+						//printf("%.2f\n", acc);
 
 						//escrever no arquivo aqui
+
 					}
 				}
 			}
 		}
+		/*
+		for (int i = 0; i < qntRot; i ++) free (matConfusa[i]);
+		free (matConfusa);
+
+		for (int i = 0; i < qntL; i ++) free (matTreino[i]);
+		free (matTreino);
+		for (int i = 0; i < qntLTeste; i ++) free (matTeste[i]);
+		free (matTeste);
+		free (rotulos);
+		free (p);
+		
+		free (pathTreino);
+		free (pathTeste);
+		free (pathSaida);
+		*/
+
 		fclose (config);
 		return 0;
 	}
@@ -97,7 +124,6 @@ int leitura (char *path, float ***matBase, int *qntL, int *qntCol, float **rotul
     }
 	(*qntL) = 0;
 	(*qntCol) = 0;
-	(*qntRot) = 0;
   	base = (float*) malloc (sizeof (float));
     for (qntB = 0; ! feof (treiste); qntB++) {
     	base = realloc (base, (qntB + 1) * sizeof (float));
@@ -109,7 +135,8 @@ int leitura (char *path, float ***matBase, int *qntL, int *qntCol, float **rotul
 	(*qntL) --;
     (*qntCol) = (qntB - 1) / (*qntL);
 	matBase[0] = (float**) malloc ((*qntL) * (sizeof (float*)));
-	//rotulos[0] = (float**) malloc ((*qntL) * (sizeof (float*)));
+	if ((*qntRot) == 0)
+		rotulos[0] = (float*) malloc ((*qntL) * (sizeof (float)));
 
 	for (int k = 0, i = -1, j = 0; k < (qntB - 1); k ++, j ++) {
 		if (j % (*qntCol) == 0) {
@@ -120,7 +147,7 @@ int leitura (char *path, float ***matBase, int *qntL, int *qntCol, float **rotul
 			if ((busca (rotulos[0], (*qntRot), base[k - 1])) && (k != 0)) {
 				(*qntRot) ++;
 				printf("%d\n", (*qntRot));
-				rotulos[0] = realloc (rotulos[0], (*qntRot) * sizeof (float)); //isso aqui valgrind não gostou
+				//rotulos[0] = realloc (rotulos[0], (*qntRot) * sizeof (float));
 				rotulos[0][(*qntRot) - 1] = base[k - 1];
 			}
 		}
@@ -190,6 +217,12 @@ float classificador (int k, char tipo, float r, float *p, float **matBase, int q
 	}
 	posClass = maior (contaRot, qntRot);
 	rotuloClass = rotulos[posClass];
+	/*
+	free (pos);
+	free (contaRot);
+	free (q);
+	free (dist);
+	*/
 	return rotuloClass;
 }
 
@@ -209,7 +242,7 @@ float acuracia (int **matConfusa, int qntRot) {
 		acertos += matConfusa[i][i];
 		for (int j = 0; j < qntRot; j ++) total += matConfusa[i][j];
 	}
-	acc = acertos / total;
+	acc = (float) acertos / (float) total;
 	return acc;
 }
 

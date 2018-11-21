@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #define N 260
@@ -20,10 +21,10 @@ int main () {
 	float **matTreino, **matTeste,
 		  *rotulos,
 		  *p,
-		  r, rotReal, rotClass, acc;
-	char *pathTreino, *pathTeste, *pathSaida,
+		  r, rotReal, *rotClass, acc;
+	char *pathTreino, *pathTeste, *pathSaida, *novoPathSaida,
 		 tipo;
-	FILE *config;
+	FILE *config, *saida;
 
 	config = fopen ("config.txt", "r");
 
@@ -37,6 +38,7 @@ int main () {
   		pathTreino = (char*) malloc (N * sizeof (char));
 		pathTeste = (char*) malloc (N * sizeof (char));
 		pathSaida = (char*) malloc (N * sizeof (char));
+		novoPathSaida = (char*) malloc (N * sizeof (char));
 
 		fgets (pathTreino, N, config);
 		fgets (pathTeste, N, config);
@@ -47,17 +49,18 @@ int main () {
 			exit(1);
 		}
 
-		
+
 		if (! (leitura (pathTreino, &matTreino, &qntL, &qntCol, &rotulos, &qntRot))) {
 			qntRotTeste = qntRot;
 			if (! (leitura (pathTeste, &matTeste, &qntLTeste, &qntCol, &rotulos, &qntRotTeste))) {
 				qntRot = qntRotTeste;
+				rotClass = (float*) malloc (qntLTeste * sizeof (float));
 				if (qntRotTeste != qntRot) printf("Rotulo desconhecido presente no teste!\n");
 				matConfusa = (int**) malloc (qntRot * sizeof (int*));
 				for (int i = 0; i < qntRot; i ++) matConfusa[i] = (int*) malloc (qntRot * sizeof (int));
 
-				for (int s = 1; ! feof (config); s++) { //ESTA FAZENDO O FINAL DUAS VEZES
-					fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+				fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+				for (int s = 1; ! feof (config); s++) {
 
 					for (int i = 0; i < qntRot; i ++) {
 						for (int j = 0; j < qntRot; j ++) matConfusa[i][j] = 0;
@@ -66,8 +69,10 @@ int main () {
 					for (int i = 0; i < qntLTeste; i ++) {
 						p = matTeste[i];
 						rotReal = matTeste[i][qntCol - 1];
-						rotClass = classificador (k, tipo, r, p, matTeste, qntCol, qntL, rotulos, qntRot);
-						confusao (matConfusa, rotClass, rotReal, rotulos, qntRot);
+						rotClass[i] = classificador (k, tipo, r, p, matTeste, qntCol, qntL, rotulos, qntRot);
+						//printf("%.2f %.2f\n", rotReal, rotClass[i]);
+						confusao (matConfusa, rotClass[i], rotReal, rotulos, qntRot);
+						acc = acuracia (matConfusa, qntRot);
 						/*
 						for (int i = 0; i < qntRot; ++i)
 						{
@@ -78,12 +83,26 @@ int main () {
 							printf("\n");
 						}
 						*/
-						acc = acuracia (matConfusa, qntRot);
-						printf("%d\n", s);
+
 						//printf("%.2f\n", acc);
 
-						//escrever no arquivo aqui
+						saida = fopen ("saida.txt", "w");
+						fprintf (saida, "%.2f\n\n", acc);
+						for (int i = 0; i < qntRot; i ++) {
+							for (int j = 0; j < qntRot; j ++) {
+								if (j != 0) fprintf (saida, " ");
+								fprintf (saida, "%d", matConfusa[i][j]);
+							}
+							fprintf (saida, "\n");
+						}
+						fprintf (saida, "\n");
+						for (int i = 0; i < qntLTeste; i ++) {
+							if (i != 0) fprintf (saida, "\n");
+							fprintf (saida, "%.2f", rotClass[i]);
+						}
+						fclose (saida);
 
+						fscanf (config, "%d, %c, %f", &k, &tipo, &r);
 					}
 				}
 			}
@@ -91,14 +110,13 @@ int main () {
 		/*
 		for (int i = 0; i < qntRot; i ++) free (matConfusa[i]);
 		free (matConfusa);
-
 		for (int i = 0; i < qntL; i ++) free (matTreino[i]);
 		free (matTreino);
 		for (int i = 0; i < qntLTeste; i ++) free (matTeste[i]);
 		free (matTeste);
 		free (rotulos);
 		free (p);
-		
+
 		free (pathTreino);
 		free (pathTeste);
 		free (pathSaida);
@@ -134,24 +152,23 @@ int leitura (char *path, float ***matBase, int *qntL, int *qntCol, float **rotul
 
 	(*qntL) --;
     (*qntCol) = (qntB - 1) / (*qntL);
-	matBase[0] = (float**) malloc ((*qntL) * (sizeof (float*)));
+	(*matBase) = (float**) malloc ((*qntL) * (sizeof (float*)));
 	if ((*qntRot) == 0)
-		rotulos[0] = (float*) malloc ((*qntL) * (sizeof (float)));
+		*rotulos = (float*) malloc ((*qntL) * (sizeof (float)));
 
 	for (int k = 0, i = -1, j = 0; k < (qntB - 1); k ++, j ++) {
 		if (j % (*qntCol) == 0) {
 			i ++;
 			j = 0;
-			matBase[0][i] = (float*) malloc ((*qntCol) * (sizeof (float)));
+			(*matBase)[i] = (float*) malloc ((*qntCol) * (sizeof (float)));
 
-			if ((busca (rotulos[0], (*qntRot), base[k - 1])) && (k != 0)) {
+			if ((busca ((*rotulos), (*qntRot), base[k - 1])) && (k != 0)) {
 				(*qntRot) ++;
-				printf("%d\n", (*qntRot));
-				//rotulos[0] = realloc (rotulos[0], (*qntRot) * sizeof (float));
-				rotulos[0][(*qntRot) - 1] = base[k - 1];
+				//rotulos[0] = realloc ((*rotulos), (*qntRot) * sizeof (float));
+				(*rotulos)[(*qntRot) - 1] = base[k - 1];
 			}
 		}
-		matBase[0][i][j] = base[k];
+		(*matBase)[i][j] = base[k];
 	}
   	free (base);
   	return 0;
@@ -232,6 +249,7 @@ void confusao (int **matConfusa, float rotClass, float rotReal, float *rotulos, 
 		if (rotReal == rotulos[i]) m = i;
 		if (rotClass == rotulos[i]) n = i;
 	}
+	//printf("%d %d\n", m, n);
 	matConfusa[m][n] ++;
 }
 

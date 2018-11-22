@@ -1,2 +1,2 @@
 all:
-	gcc distancias.c -lm -o KNN
+	gcc distancias.c -lm -o trab1

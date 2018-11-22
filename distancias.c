@@ -3,13 +3,12 @@
 #include <string.h>
 #include <math.h>
 
-#define N 260
-
 struct rotulo {
 	float dist;
 	float rotClass;
 };
 
+int leituraPath (FILE *config, char **path);
 int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax);
 float distancias (float *p, float *q, int n, float r, char tipo);
 float classificador (int k, char tipo, float r, float *p, float **matTreino, int qntL, int qntCol, float rotMax);
@@ -19,8 +18,8 @@ float acuracia (int **matConfusa, int qntRot);
 
 int main () {
     int **matConfusa,
-    	qntL, qntLTeste, qntCol, k;
-	char pathTreino[N], pathTeste[N], pathSaida[N], novoPathSaida[N],
+    	qntL, qntLTeste, qntCol, k, nPath;
+	char *pathTreino, *pathTeste, *pathSaida, *novoPathSaida,
 		 tipo;
     float **matTreino = NULL, **matTeste = NULL,
     	  *p,
@@ -35,11 +34,13 @@ int main () {
       	return (1);
    	}
 
-  	else {
-        fscanf (config, "%s\n", pathTreino);
-        fscanf (config, "%s\n", pathTeste);
-        fscanf (config, "%s\n", pathSaida);
-    }
+  	nPath = (leituraPath (config, &pathTreino));
+	if (nPath == 0) return 1;
+	nPath = (leituraPath (config, &pathTeste));
+	if (nPath == 0) return 1;
+	nPath = (leituraPath (config, &pathSaida));
+	//novoPathSaida = (char*) malloc (nPath * sizeof (char));
+	//strcat (novoPathSaida, pathSaida);
 
     if(! (leitura (&matTreino, pathTreino, &qntL, &qntCol, &rotMax))) {
         if(! (leitura (&matTeste, pathTeste, &qntLTeste, &qntCol, &rotMax))) {
@@ -49,7 +50,7 @@ int main () {
             for (int i = 0; i < (int) rotMax; i ++) matConfusa[i] = (int*) malloc (((int) rotMax) * sizeof (int));
 
             fscanf (config, "%d, %c, %f", &k, &tipo, &r);
-            for (int s = 1; (! feof (config)); s++) {
+            for (int s = 1; (! feof (config)); s ++) {
                 for (int i = 0; i < ((int) rotMax); i ++) {
                     for (int j = 0; j < ((int) rotMax); j ++) matConfusa[i][j] = 0;
                 }
@@ -61,8 +62,12 @@ int main () {
             		confusao (matConfusa, rotClass[i], rotReal, rotMax);
             	}
             	acc = acuracia (matConfusa, ((int) rotMax));
-
-
+				//novoPathSaida = realloc (novoPathSaida, (nPath + 16 + s) * sizeof (char));
+				char resultados[12] = "resultados_";
+				char txt[5] = ".txt";
+				//pathSaida = realloc (pathSaida, (nPath + 16 + s) * sizeof (char));
+				//printf("%s\n", novoPathSaida);
+				/*
             	saida = fopen ("pathSaida", "w");
             	fprintf (saida, "%.2f\n\n", acc);
             	for (int i = 0; i < (int) rotMax; i ++) {
@@ -78,23 +83,47 @@ int main () {
 					fprintf (saida, "%.2f", rotClass[i]);
 				}
 				fclose (saida);
+				*/
 
                 fscanf (config, "%d, %c, %f", &k, &tipo, &r);
             }
             fclose (config);
 
-        }
-        for (int i = 0; i < qntLTeste; i++) free (matTeste[i]);
-        free (matTeste);
+			for (int i = 0; i < qntLTeste; i++) free (matTeste[i]);
+	        free (matTeste);
 
-    	for (int i = 0; i < (int) rotMax; i ++) free (matConfusa[i]);
-    	free (matConfusa);
+	    	for (int i = 0; i < (int) rotMax; i ++) free (matConfusa[i]);
+	    	free (matConfusa);
+        }
+		for (int i = 0; i < qntL; i++) free (matTreino[i]);
+	    free (matTreino);
     }
-    for (int i = 0; i < qntL; i++) free (matTreino[i]);
-    free (matTreino);
+
+	free (pathTreino);
+	free (pathTeste);
+	free (pathSaida);
+	//free (novoPathSaida);
+
+
     return 0;
 }
 
+int leituraPath (FILE *config, char **path) {
+	int n = 0;
+	*path = (char*) malloc (sizeof (char));
+	fscanf (config, "%c", &(*path)[0]);
+	if ((*path)[0] == '\n') {
+		printf("Caminho desconhecido!\n");
+		return 0;
+	}
+
+	for (n = 1; (*path)[n - 1] != '\n'; n ++) {
+		*path = realloc (*path, (n + 1) * sizeof (char));
+		fscanf (config, "%c", &(*path)[n]);
+	};
+	(*path)[n - 1] = '\0';
+	return n;
+}
 
 int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax) {
     int b;

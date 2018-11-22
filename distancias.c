@@ -22,7 +22,7 @@ float acuracia (int **matConfusa, int qntRot);																			// CALCULO DA A
 
 int main () {
     int **matConfusa,
-    	nPath, qntL, qntLTeste, qntCol, k;
+    	nPath, qntL, qntLTeste, qntCol, k, retorno;
 	char *pathTreino, *pathTeste, *pathSaida, *novoPathSaida,
 		 tipo;
     float **matTreino, **matTeste,
@@ -34,7 +34,6 @@ int main () {
 
 	if (config == NULL) {
     	printf ("Erro ao abrir o arquivo!\n");
-      	fclose (config);
       	return (1);
    	}
 
@@ -43,7 +42,8 @@ int main () {
 	nPath = (leituraPath (config, &pathTeste));
 	if (nPath == 0) return 1;
 	nPath = (leituraPath (config, &pathSaida));
-
+	if (nPath == 0) return 1;
+	retorno = 0;
 	rotMax = 0;
     if(! (leitura (&matTreino, pathTreino, &qntL, &qntCol, &rotMax))) {
         if(! (leitura (&matTeste, pathTeste, &qntLTeste, &qntCol, &rotMax))) {
@@ -53,7 +53,7 @@ int main () {
             for (int i = 0; i < (int) rotMax; i ++) matConfusa[i] = (int*) malloc (((int) rotMax) * sizeof (int));
 
             fscanf (config, "%d, %c, %f", &k, &tipo, &r);																// LEITURA DOS PARAMETROS DO CLASSIFICADOR
-            for (int s = 1; (! feof (config)); s ++) {
+            for (int s = 1; ((! feof (config)) && (retorno != 1)); s ++) {
                 for (int i = 0; i < ((int) rotMax); i ++) {
                     for (int j = 0; j < ((int) rotMax); j ++) matConfusa[i][j] = 0;										// ZERAR OS ELEMENTOS DA MATRIZ DE CONFUSAO
                 }
@@ -68,26 +68,32 @@ int main () {
 
 				novoPathSaida = (char*) malloc ((nPath + 16 + s) * sizeof (char));
 				sprintf(novoPathSaida, "%sresultado_%d.txt", pathSaida, s);
-            	saida = fopen (novoPathSaida, "w");																		// INICIO DA ESCRITA NO ARQUIVO DE SAIDA
-            	fprintf (saida, "%.2f\n\n", acc);																		// EH NECESSARIO QUE TODO CAMINHO QUE CONTERA AS PREDICOES EXISTA!
-            	for (int i = 0; i < (int) rotMax; i ++) {
-            		for (int j = 0; j < (int) rotMax; j ++) {
-            			if (j != 0) fprintf (saida, " ");
-            			fprintf (saida, "%d", matConfusa[i][j]);
-            		}
-            		fprintf (saida, "\n");
+            	saida = fopen (novoPathSaida, "w"); 																	// INICIO DA ESCRITA NO ARQUIVO DE SAIDA
+            	if (saida == NULL) {
+            		printf ("Erro ao abrir o arquivo de saida!\n");														// CASO O CAMINHO NAO EXISTA
+            		free (novoPathSaida);
+      				retorno = 1;
             	}
-            	fprintf (saida, "\n");
-				for (int i = 0; i < qntLTeste; i ++) {
-					if (i != 0) fprintf (saida, "\n");
-					fprintf (saida, "%.2f", rotClass[i]);
-				}
-				fclose (saida);																							// TERMINO DA ESCRITA NO ARQUIVO DE SAIDA
-				free (novoPathSaida);
+            	else {
+	            	fprintf (saida, "%.2f\n\n", acc);
+	            	for (int i = 0; i < (int) rotMax; i ++) {
+	            		for (int j = 0; j < (int) rotMax; j ++) {
+	            			if (j != 0) fprintf (saida, " ");
+	            			fprintf (saida, "%d", matConfusa[i][j]);
+	            		}
+	            		fprintf (saida, "\n");
+	            	}
+	            	fprintf (saida, "\n");
+					for (int i = 0; i < qntLTeste; i ++) {
+						if (i != 0) fprintf (saida, "\n");
+						fprintf (saida, "%d", (int) (rotClass[i] - 1));
+					}
+					fclose (saida);																						// TERMINO DA ESCRITA NO ARQUIVO DE SAIDA
+					free (novoPathSaida);
 
-                fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+	                fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+            	}
             }
-            fclose (config);
 
 			for (int i = 0; i < qntLTeste; i++) free (matTeste[i]);
 	        free (matTeste);
@@ -98,11 +104,12 @@ int main () {
 		for (int i = 0; i < qntL; i++) free (matTreino[i]);
 	    free (matTreino);
     }
+    fclose (config);
 	free (pathTreino);
 	free (pathTeste);
 	free (pathSaida);
 
-    return 0;
+    return (retorno);
 }
 
 int leituraPath (FILE *config, char **path) {																			// LEITURA DINAMICA DOS CAMINHOS DOS AQUIVOS
@@ -132,7 +139,6 @@ int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax
 
 	if (treiste == NULL) {
 	    printf ("Erro ao abrir o arquivo!\n");
-	    fclose (treiste);
         return 1;																										// RETORNA 1 EM CASO DE FALHAS, OU 0 EM CASO DE SUCESSO
     }
 
@@ -224,7 +230,6 @@ float classificador (int k, char tipo, float r, float *p, float **matTreino, int
 			rotAtual ++;
 		}
 	}
-
 	bubbleSort (contaRot, (int) rotMax);																				// ORDENACAO DA CONTAGEM DE ROTULOS
 	rotClass = contaRot[((int) rotMax) - 1].rotClass;																	// OBTENCAO DO ROTULO
 	free (distancia);
@@ -268,8 +273,3 @@ float acuracia (int **matConfusa, int qntRot) {																			// CALCULO DA 
 	acc = (float) acertos / (float) total;
 	return acc;
 }
-
-/*
-OBSERVACAO: Na maioria dos casos de erros esperados, as funcoes correspondentes retornam 1 em casos de falhas durante a execucao (com exceção da leituraPath).
-Os motivos dos erros serao mostrados pelo terminal.
-*/

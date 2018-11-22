@@ -1,3 +1,7 @@
+// TRABALHO DE PROGRAMACAO II: Classificação de dados utilizando um KNN
+// LEANDRO FURLAM TURI
+// 22 de novembro de 2018
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,22 +12,22 @@ struct rotulo {
 	float rotClass;
 };
 
-int leituraPath (FILE *config, char **path);
-int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax);
-float distancias (float *p, float *q, int n, float r, char tipo);
-float classificador (int k, char tipo, float r, float *p, float **matTreino, int qntL, int qntCol, float rotMax);
-void bubbleSort (struct rotulo *distancia, int n);
-void confusao (int **matConfusa, float rotClass, float rotReal, float rotMax);
-float acuracia (int **matConfusa, int qntRot);
+int leituraPath (FILE *config, char **path);																			// LEITURA DOS CAMINHOS PARA OS ARQUIVOS DE SAIDA, TREINO E TESTE
+int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax);										// LEITURA DOS COMPONENTES DE TREINO E TESTE
+float distancias (float *p, float *q, int n, float r, char tipo);														// CALCULO DAS DISTANCIAS
+float classificador (int k, char tipo, float r, float *p, float **matTreino, int qntL, int qntCol, float rotMax);		// CLASSIFICADOR KNN
+void bubbleSort (struct rotulo *distancia, int n);																		// ORDENACAO DA ESTRUTURA CRIADA
+void confusao (int **matConfusa, float rotClass, float rotReal, float rotMax);											// MATRIZ DE CONFUSAO
+float acuracia (int **matConfusa, int qntRot);																			// CALCULO DA ACURACIA
 
 int main () {
     int **matConfusa,
-    	qntL, qntLTeste, qntCol, k, nPath;
+    	nPath, qntL, qntLTeste, qntCol, k;
 	char *pathTreino, *pathTeste, *pathSaida, *novoPathSaida,
 		 tipo;
-    float **matTreino = NULL, **matTeste = NULL,
+    float **matTreino, **matTeste,
     	  *p,
-          rotMax = 0, r, rotReal, acc;
+          rotMax, r, rotReal, acc;
 	FILE *config, *saida;
 
 	config = fopen ("config.txt", "r");
@@ -39,9 +43,8 @@ int main () {
 	nPath = (leituraPath (config, &pathTeste));
 	if (nPath == 0) return 1;
 	nPath = (leituraPath (config, &pathSaida));
-	//novoPathSaida = (char*) malloc (nPath * sizeof (char));
-	//strcat (novoPathSaida, pathSaida);
 
+	rotMax = 0;
     if(! (leitura (&matTreino, pathTreino, &qntL, &qntCol, &rotMax))) {
         if(! (leitura (&matTeste, pathTeste, &qntLTeste, &qntCol, &rotMax))) {
 
@@ -49,27 +52,24 @@ int main () {
             matConfusa = (int**) malloc (((int) rotMax) * sizeof (int*));
             for (int i = 0; i < (int) rotMax; i ++) matConfusa[i] = (int*) malloc (((int) rotMax) * sizeof (int));
 
-            fscanf (config, "%d, %c, %f", &k, &tipo, &r);
+            fscanf (config, "%d, %c, %f", &k, &tipo, &r);																// LEITURA DOS PARAMETROS DO CLASSIFICADOR
             for (int s = 1; (! feof (config)); s ++) {
                 for (int i = 0; i < ((int) rotMax); i ++) {
-                    for (int j = 0; j < ((int) rotMax); j ++) matConfusa[i][j] = 0;
+                    for (int j = 0; j < ((int) rotMax); j ++) matConfusa[i][j] = 0;										// ZERAR OS ELEMENTOS DA MATRIZ DE CONFUSAO
                 }
 
             	for (int i = 0; i < qntLTeste; i ++) {
-            		p = matTeste[i];
+            		p = matTeste[i];																					// OBTENCAO DE UM VETOR DE TESTE
             		rotReal = matTeste[i][qntCol - 1];
-            		rotClass[i] = classificador (k, tipo, r, p, matTreino, qntL, qntCol, rotMax);
-            		confusao (matConfusa, rotClass[i], rotReal, rotMax);
+            		rotClass[i] = classificador (k, tipo, r, p, matTreino, qntL, qntCol, rotMax);						// CLASSIFICACAO (COM CALCULO DA DISTANCIA DEVIDA)
+            		confusao (matConfusa, rotClass[i], rotReal, rotMax);												// PREENCHIMENTO DA MATRIZ DE CONFUSAO
             	}
-            	acc = acuracia (matConfusa, ((int) rotMax));
-				//novoPathSaida = realloc (novoPathSaida, (nPath + 16 + s) * sizeof (char));
-				char resultados[12] = "resultados_";
-				char txt[5] = ".txt";
-				//pathSaida = realloc (pathSaida, (nPath + 16 + s) * sizeof (char));
-				//printf("%s\n", novoPathSaida);
-				/*
-            	saida = fopen ("pathSaida", "w");
-            	fprintf (saida, "%.2f\n\n", acc);
+            	acc = acuracia (matConfusa, ((int) rotMax));															// CALCULO DA ACURACIA
+
+				novoPathSaida = (char*) malloc ((nPath + 16 + s) * sizeof (char));
+				sprintf(novoPathSaida, "%sresultado_%d.txt", pathSaida, s);
+            	saida = fopen (novoPathSaida, "w");																		// INICIO DA ESCRITA NO ARQUIVO DE SAIDA
+            	fprintf (saida, "%.2f\n\n", acc);																		// EH NECESSARIO QUE TODO CAMINHO QUE CONTERA AS PREDICOES EXISTA!
             	for (int i = 0; i < (int) rotMax; i ++) {
             		for (int j = 0; j < (int) rotMax; j ++) {
             			if (j != 0) fprintf (saida, " ");
@@ -82,8 +82,8 @@ int main () {
 					if (i != 0) fprintf (saida, "\n");
 					fprintf (saida, "%.2f", rotClass[i]);
 				}
-				fclose (saida);
-				*/
+				fclose (saida);																							// TERMINO DA ESCRITA NO ARQUIVO DE SAIDA
+				free (novoPathSaida);
 
                 fscanf (config, "%d, %c, %f", &k, &tipo, &r);
             }
@@ -98,23 +98,20 @@ int main () {
 		for (int i = 0; i < qntL; i++) free (matTreino[i]);
 	    free (matTreino);
     }
-
 	free (pathTreino);
 	free (pathTeste);
 	free (pathSaida);
-	//free (novoPathSaida);
-
 
     return 0;
 }
 
-int leituraPath (FILE *config, char **path) {
+int leituraPath (FILE *config, char **path) {																			// LEITURA DINAMICA DOS CAMINHOS DOS AQUIVOS
 	int n = 0;
 	*path = (char*) malloc (sizeof (char));
 	fscanf (config, "%c", &(*path)[0]);
 	if ((*path)[0] == '\n') {
 		printf("Caminho desconhecido!\n");
-		return 0;
+		return 0;																										// RETORNA 0 EM CASO DE FALHAS, OU A QUANTIDADE DE CARACTERES, REPRESENTANDO SUCESSO
 	}
 
 	for (n = 1; (*path)[n - 1] != '\n'; n ++) {
@@ -125,7 +122,7 @@ int leituraPath (FILE *config, char **path) {
 	return n;
 }
 
-int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax) {
+int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax) {										// LEITURA DINAMICA DOS COMPONENTES DE TREINO E TESTE
     int b;
     char l;
     float *base;
@@ -136,14 +133,14 @@ int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax
 	if (treiste == NULL) {
 	    printf ("Erro ao abrir o arquivo!\n");
 	    fclose (treiste);
-        return 1;
+        return 1;																										// RETORNA 1 EM CASO DE FALHAS, OU 0 EM CASO DE SUCESSO
     }
 
     base = (float*) malloc (sizeof (float));
     (*qntL) = 0;
     for (b = 0; ! feof (treiste); b ++) {
         base = realloc (base, (b + 1) * sizeof (float));
-    	fscanf (treiste, "%f%c", &base[b], &l);
+    	fscanf (treiste, "%f%c", &base[b], &l);																			// ARMAZENAMENTO DOS ELEMENTOS EM UM VETOR
         if (l == '\n') (*qntL) ++;
     }
     fclose (treiste);
@@ -153,7 +150,7 @@ int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax
 
     (*matBase) = (float**) malloc ((*qntL) * sizeof (float*));
 
-    for (int k = 0, i = -1, j = 0; k < (b - 1); k ++, j ++) {
+    for (int k = 0, i = -1, j = 0; k < (b - 1); k ++, j ++) {															// CONVERTER O VETOR DE DADOS EM UMA MATRIZ
 		if (j % (*qntCol) == 0) {
 			i ++;
 			j = 0;
@@ -162,14 +159,14 @@ int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax
                 if ((*rotMax) < base[k - 1]) (*rotMax) = base[k - 1];
             }
 		}
-		(*matBase)[i][j] = base[k];
+		(*matBase)[i][j] = base[k];																						// MATRIZ CONTENDO A BASE DE DADOS
 	}
     free (base);
     return 0;
 }
 
 
-float distancias (float *p, float *q, int n, float r, char tipo) {
+float distancias (float *p, float *q, int n, float r, char tipo) {														// CALCULO DAS DISTANCIAS
 	float dist = 0, mod = 0;
 	switch (tipo) {
 			case 'E':
@@ -181,7 +178,7 @@ float distancias (float *p, float *q, int n, float r, char tipo) {
 
 			case 'M':
 				for (int i = 0; i < n; i++) {
-					mod = sqrt (pow ((p[i] - q[i]), 2));
+					mod = sqrt (pow ((p[i] - q[i]), 2));																// IMPLEMENTACAO DA FUNCAO VALOR ABSOLUTO
 					dist += pow (mod, r);
 				}
 				dist = pow(dist, 1/r);
@@ -203,38 +200,39 @@ float distancias (float *p, float *q, int n, float r, char tipo) {
 	return dist;
 }
 
-float classificador (int k, char tipo, float r, float *p, float **matTreino, int qntL, int qntCol, float rotMax) {
+float classificador (int k, char tipo, float r, float *p, float **matTreino, int qntL, int qntCol, float rotMax) {		// CLASSIFICADOR KNN
 	float *q,
 		  rotClass = 0, rotAtual;
 	struct rotulo *distancia, contaRot[(int) rotMax];
 	distancia = (struct rotulo*) malloc (qntL * sizeof (struct rotulo));
 	for (int i = 0; i < (int) rotMax; i ++) contaRot[i].dist = 0;
 
-	for (int i = 0; i < qntL; i ++) {
+	for (int i = 0; i < qntL; i ++) {																					// PERCORRE TODA A BASE DE TREINO, COMPARANDO COM O VETOR P DADO
 		q = matTreino[i];
-		distancia[i].dist = distancias (p, q, (qntCol - 1), r, tipo);
+		distancia[i].dist = distancias (p, q, (qntCol - 1), r, tipo);													// ESTRUTURA CONTENDO A DISTANCIA E O ROTULO
 		distancia[i].rotClass = q[qntCol - 1];
 	}
 	bubbleSort (distancia, (qntL));
-	for (int i = 0; i < k; i ++) {
+
+	for (int i = 0; i < k; i ++) { 																						// ORDENACAO DAS DISTANCIAS, POR ORDEM CRESCENTE
 		rotAtual = 1.0;
-		for (int j = 0; j < (int) rotMax; j ++) {
+		for (int j = 0; j < (int) rotMax; j ++) {																		// CONTAGEM DOS ROTULOS CORRESPONDENTES AS K MENORES DISTANCIAS
 			if (distancia[i].rotClass == rotAtual) {
-				contaRot[j].dist ++;
+				contaRot[j].dist ++;																					// CONTAGEM ARMAZENADA NA MESMA ESTRUTURA
 				contaRot[j].rotClass = rotAtual;
 			}
 			rotAtual ++;
 		}
 	}
 
-	bubbleSort (contaRot, (int) rotMax);
-	rotClass = contaRot[((int) rotMax) - 1].rotClass;
+	bubbleSort (contaRot, (int) rotMax);																				// ORDENACAO DA CONTAGEM DE ROTULOS
+	rotClass = contaRot[((int) rotMax) - 1].rotClass;																	// OBTENCAO DO ROTULO
 	free (distancia);
 	return rotClass;
 }
 
 
-void bubbleSort (struct rotulo *distancia, int n) {
+void bubbleSort (struct rotulo *distancia, int n) {																		// ORDENACAO DA ESTRUTURA distancia, PELO PARAMETRO dist
 	struct rotulo aux;
 	for (int i = 0; i < n; i ++) {
 		for (int j = i + 1; j < n; j ++) {
@@ -247,9 +245,9 @@ void bubbleSort (struct rotulo *distancia, int n) {
 	}
 }
 
-void confusao (int **matConfusa, float rotClass, float rotReal, float rotMax) {
+void confusao (int **matConfusa, float rotClass, float rotReal, float rotMax) {											// 	IMPLEMENTACAO DA MATRIZ DE CONFUSAO
 	int m, n;
-	for (float j = 1.0; j <= rotMax; j ++) {
+	for (float j = 1.0; j <= rotMax; j ++) {																			// COMPARACAO DOS ROTULOS
 		if (rotReal == j) {
 			m = ((int) j) - 1;
 		}
@@ -260,7 +258,7 @@ void confusao (int **matConfusa, float rotClass, float rotReal, float rotMax) {
 	matConfusa[m][n] ++;
 }
 
-float acuracia (int **matConfusa, int qntRot) {
+float acuracia (int **matConfusa, int qntRot) {																			// CALCULO DA ACURACIA
 	int acertos = 0, total = 0;
 	float acc;
 	for (int i = 0; i < qntRot; i ++) {
@@ -270,3 +268,8 @@ float acuracia (int **matConfusa, int qntRot) {
 	acc = (float) acertos / (float) total;
 	return acc;
 }
+
+/*
+OBSERVACAO: Na maioria dos casos de erros esperados, as funcoes correspondentes retornam 1 em casos de falhas durante a execucao (com exceção da leituraPath).
+Os motivos dos erros serao mostrados pelo terminal.
+*/

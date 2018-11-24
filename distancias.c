@@ -54,6 +54,7 @@ int main () {
 
             fscanf (config, "%d, %c, %f", &k, &tipo, &r);																// LEITURA DOS PARAMETROS DO CLASSIFICADOR
             for (int s = 1; ((! feof (config)) && (retorno != 1)); s ++) {
+                printf("%d %c %f\n", k, tipo, r);
                 for (int i = 0; i < ((int) rotMax); i ++) {
                     for (int j = 0; j < ((int) rotMax); j ++) matConfusa[i][j] = 0;										// ZERAR OS ELEMENTOS DA MATRIZ DE CONFUSAO
                 }
@@ -275,6 +276,6 @@ float acuracia (int **matConfusa, int qntRot) {																			// CALCULO DA 
 		acertos += matConfusa[i][i];
 		for (int j = 0; j < qntRot; j ++) total += matConfusa[i][j];
 	}
-	acc = (float) acertos / (float) total;
+	acc = ((float) acertos / (float) total) * 100;
 	return acc;
 }

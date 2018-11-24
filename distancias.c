@@ -175,22 +175,23 @@ int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax
 float distancias (float *p, float *q, int n, float r, char tipo) {														// CALCULO DAS DISTANCIAS
 	float dist = 0, mod = 0;
 	switch (tipo) {
-			case 'E':
+			case 'E':																									// DISTANCIA Euclidiana
 				for (int i = 0; i < n; i++) {
 					dist += pow (p[i] - q[i], 2);
 				}
 				dist = sqrt (dist);
 			break;
 
-			case 'M':
-				for (int i = 0; i < n; i++) {
+			case 'M':																									// DISTANCIA DE Minkowsky
+				if (r <= 0) r = 2.0;																					// CASO O RAIO NAO SEJA INTEIRO, CALCULAREMOS A DISTANCIA EUCLIDIANA
+				for (int i = 0; i < n; i++) {																			// FOI ESCOLHIDA A DISTANCIA EUCLIDIANA PELO FATO DE QUE PARA SER DISTANCIA DE Chebyshev, ERA NECESSARIO O RAIO SER INFINITO.
 					mod = sqrt (pow ((p[i] - q[i]), 2));																// IMPLEMENTACAO DA FUNCAO VALOR ABSOLUTO
 					dist += pow (mod, r);
 				}
 				dist = pow(dist, 1/r);
 			break;
 
-			case 'C':
+			case 'C':																									// DISTANCIA DE Chebyshev
 				for (int i = 0; i < n; i++) {
 					if ((pow ((p[i] - q[i]), 2)) > dist) {
 						dist = pow ((p[i] - q[i]), 2);
@@ -225,13 +226,17 @@ float classificador (int k, char tipo, float r, float *p, float **matTreino, int
 		for (int j = 0; j < (int) rotMax; j ++) {																		// CONTAGEM DOS ROTULOS CORRESPONDENTES AS K MENORES DISTANCIAS
 			if (distancia[i].rotClass == rotAtual) {
 				contaRot[j].dist ++;																					// CONTAGEM ARMAZENADA NA MESMA ESTRUTURA
-				contaRot[j].rotClass = rotAtual;
 			}
+			contaRot[j].rotClass = rotAtual;
 			rotAtual ++;
 		}
 	}
 	bubbleSort (contaRot, (int) rotMax);																				// ORDENACAO DA CONTAGEM DE ROTULOS
 	rotClass = contaRot[((int) rotMax) - 1].rotClass;																	// OBTENCAO DO ROTULO
+	for (int i = (((int) rotMax) - 1); i > 0; i --) {
+		if (contaRot[i - 1].dist == contaRot[i].dist) rotClass = contaRot[i - 1].rotClass;								// CONDICIONAL PARA PEGAR O MENOR ROTULO
+		else break;
+	}
 	free (distancia);
 	return rotClass;
 }

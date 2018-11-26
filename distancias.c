@@ -43,6 +43,7 @@ int main () {
 	if (nPath == 0) return 1;
 	nPath = (leituraPath (config, &pathSaida));
 	if (nPath == 0) return 1;
+
 	retorno = 0;
 	rotMax = 0;
     if(! (leitura (&matTreino, pathTreino, &qntL, &qntCol, &rotMax))) {
@@ -171,7 +172,6 @@ int leitura (float ***matBase, char *path, int *qntL, int *qntCol, float *rotMax
     return 0;
 }
 
-
 float distancias (float *p, float *q, int n, float r, char tipo) {														// CALCULO DAS DISTANCIAS
 	float dist = 0, mod = 0;
 	switch (tipo) {
@@ -240,7 +240,6 @@ float classificador (int k, char tipo, float r, float *p, float **matTreino, int
 	free (distancia);
 	return rotClass;
 }
-
 
 void bubbleSort (struct rotulo *distancia, int n) {																		// ORDENACAO DA ESTRUTURA distancia, PELO PARAMETRO dist
 	struct rotulo aux;

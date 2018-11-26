@@ -67,7 +67,7 @@ int main () {
             	acc = acuracia (matConfusa, ((int) rotMax));															// CALCULO DA ACURACIA
 
 				novoPathSaida = (char*) malloc ((nPath + 16 + s) * sizeof (char));
-				sprintf(novoPathSaida, "%sresultado_%d.txt", pathSaida, s);
+				sprintf(novoPathSaida, "%spredicao_%d.txt", pathSaida, s);
             	saida = fopen (novoPathSaida, "w"); 																	// INICIO DA ESCRITA NO ARQUIVO DE SAIDA
             	if (saida == NULL) {
             		printf ("Erro ao abrir o arquivo de saida!\n");														// CASO O CAMINHO NAO EXISTA
